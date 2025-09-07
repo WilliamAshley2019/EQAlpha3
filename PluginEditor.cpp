@@ -16,13 +16,15 @@ public:
 
         // Define colors for the new illuminated buttons
         apiBlue = juce::Colour(0xff00529e);
-        setColour(juce::TextButton::buttonOnColourId, apiBlue);
+        setColour(juce::TextButton::buttonOnColourId, juce::Colour(0xffff0000)); // Red for illumination
         setColour(juce::TextButton::buttonColourId, juce::Colours::black);
+        // Alternative: Orange
+        // setColour(juce::TextButton::buttonOnColourId, juce::Colour(0xffffa500));
     }
 
     // A more detailed rotary slider with gradients and a modern pointer
     void drawRotarySlider(juce::Graphics& g, int x, int y, int width, int height, float sliderPos,
-        const float rotaryStartAngle, const float rotaryEndAngle, juce::Slider& slider) override
+        const float rotaryStartAngle, const float rotaryEndAngle, juce::Slider& /*slider*/) override
     {
         auto bounds = juce::Rectangle<float>(x, y, width, height).reduced(10.0f);
         auto radius = juce::jmin(bounds.getWidth(), bounds.getHeight()) / 2.0f;
@@ -87,7 +89,6 @@ private:
     juce::Colour apiBlue;
 };
 
-
 Api550bAudioProcessorEditor::Api550bAudioProcessorEditor(Api550bAudioProcessor& p)
     : AudioProcessorEditor(&p), audioProcessor(p)
 {
@@ -104,10 +105,11 @@ Api550bAudioProcessorEditor::Api550bAudioProcessorEditor(Api550bAudioProcessor& 
     setupSlider(highGainSlider);
     setupSlider(satDriveSlider);
 
-    auto setupLabel = [&](juce::Label& label, const juce::String& text, float fontSize = 14.0f, juce::Justification just = juce::Justification::centred) {
+    auto setupLabel = [&](juce::Label& label, const juce::String& text, float fontSize = 14.0f, bool isWhite = false) {
         label.setText(text, juce::dontSendNotification);
-        label.setJustificationType(just);
+        label.setJustificationType(juce::Justification::centred);
         label.setFont(juce::FontOptions(fontSize));
+        label.setColour(juce::Label::textColourId, isWhite ? juce::Colours::white : juce::Colours::lightgrey);
         addAndMakeVisible(label);
         };
 
@@ -115,8 +117,6 @@ Api550bAudioProcessorEditor::Api550bAudioProcessorEditor(Api550bAudioProcessor& 
     setupLabel(lowMidBandLabel, "LOW-MID", 16.0f);
     setupLabel(highMidBandLabel, "HIGH-MID", 16.0f);
     setupLabel(highBandLabel, "HIGH", 16.0f);
-
-    // Setup new labels for mute/bypass
     setupLabel(lowMuteLabel, "MUTE", 12.0f);
     setupLabel(lowBypassLabel, "BYPASS", 12.0f);
     setupLabel(lmMuteLabel, "MUTE", 12.0f);
@@ -125,10 +125,11 @@ Api550bAudioProcessorEditor::Api550bAudioProcessorEditor(Api550bAudioProcessor& 
     setupLabel(hmBypassLabel, "BYPASS", 12.0f);
     setupLabel(highMuteLabel, "MUTE", 12.0f);
     setupLabel(highBypassLabel, "BYPASS", 12.0f);
+    setupLabel(satDriveLabel, "DRIVE", 16.0f, true);
 
     auto setupButton = [&](juce::Button& button, const juce::String& text) {
         addAndMakeVisible(button);
-        button.setButtonText(text); // Text is not drawn, but useful for accessibility/debugging
+        button.setButtonText(text); // Text for accessibility and visibility
         button.setClickingTogglesState(true);
         button.setToggleState(false, juce::dontSendNotification);
         };
@@ -145,7 +146,6 @@ Api550bAudioProcessorEditor::Api550bAudioProcessorEditor(Api550bAudioProcessor& 
     setupButton(highMuteButton, "MUTE");
     setupButton(highBypassButton, "BYPASS");
 
-    // Attachments remain the same
     lowFreqAttachment = std::make_unique<SliderAttachment>(audioProcessor.apvts, Params::LOW_FREQ, lowFreqSlider);
     lowGainAttachment = std::make_unique<SliderAttachment>(audioProcessor.apvts, Params::LOW_GAIN, lowGainSlider);
     lowShelfAttachment = std::make_unique<ButtonAttachment>(audioProcessor.apvts, Params::LOW_SHELF, lowShelfButton);
@@ -167,7 +167,7 @@ Api550bAudioProcessorEditor::Api550bAudioProcessorEditor(Api550bAudioProcessor& 
     satDriveAttachment = std::make_unique<SliderAttachment>(audioProcessor.apvts, Params::SAT_DRIVE, satDriveSlider);
     qModeAttachment = std::make_unique<ButtonAttachment>(audioProcessor.apvts, Params::Q_MODE, qModeButton);
 
-    setSize(700, 480);
+    setSize(700, 480); // Reverted to original size, as layout fits
     setResizable(true, true);
     setResizeLimits(600, 420, 1200, 840);
 }
@@ -179,8 +179,7 @@ Api550bAudioProcessorEditor::~Api550bAudioProcessorEditor()
 
 void Api550bAudioProcessorEditor::paint(juce::Graphics& g)
 {
-    g.fillAll(juce::Colour(0xff00529e)); // Dark charcoal background
-
+    g.fillAll(juce::Colour(0xff00529e)); // API blue background
     auto bounds = getLocalBounds();
     g.setColour(juce::Colours::lightgrey);
     g.setFont(juce::FontOptions(22.0f, juce::Font::bold));
@@ -206,7 +205,7 @@ void Api550bAudioProcessorEditor::resized()
     bounds.reduce(15, 15);
 
     const int numBands = 4;
-    const int bandWidth = (bounds.getWidth() - (numBands - 1) * 10) / numBands;
+    const int bandWidth = (bounds.getWidth() - (numBands - 1) * 10) / numBands; // ~160px at 700px width
 
     auto layoutBand = [&](juce::Rectangle<int> area, juce::Label& bandLabel,
         juce::Slider& freqSlider, juce::Slider& gainSlider, juce::Component* extraControl,
@@ -220,29 +219,16 @@ void Api550bAudioProcessorEditor::resized()
             const int sliderHeight = knobSize + textBoxHeight;
             const int buttonSize = 20;
             const int buttonLabelHeight = 15;
-            const int spacing = 10;
+            const int spacing = 12; // Kept for clarity
 
             bandLabel.setBounds(area.removeFromTop(labelHeight));
             area.removeFromTop(spacing);
-
             freqSlider.setBounds(area.removeFromTop(sliderHeight).withSizeKeepingCentre(knobSize, sliderHeight));
+            area.removeFromTop(spacing);
             gainSlider.setBounds(area.removeFromTop(sliderHeight).withSizeKeepingCentre(knobSize, sliderHeight));
             area.removeFromTop(spacing);
 
-            if (extraControl)
-            {
-                if (extraLabel)
-                    extraLabel->setBounds(area.removeFromTop(labelHeight));
-
-                if (dynamic_cast<juce::Slider*>(extraControl))
-                    extraControl->setBounds(area.removeFromTop(sliderHeight).withSizeKeepingCentre(knobSize, sliderHeight));
-                else // For buttons (shelf, qMode)
-                    extraControl->setBounds(area.removeFromTop(labelHeight).reduced(area.getWidth() / 5, 0));
-
-                area.removeFromTop(spacing);
-            }
-
-            // Layout for new illuminated buttons and their labels
+            // Mute and Bypass buttons with labels (above extra controls)
             if (muteButton && bypassButton && muteLabel && bypassLabel)
             {
                 auto buttonArea = area.removeFromTop(buttonSize + buttonLabelHeight);
@@ -255,6 +241,18 @@ void Api550bAudioProcessorEditor::resized()
                 auto bypassArea = buttonArea.removeFromRight(halfWidth);
                 bypassButton->setBounds(bypassArea.removeFromTop(buttonSize).withSizeKeepingCentre(buttonSize, buttonSize));
                 bypassLabel->setBounds(bypassArea);
+                area.removeFromTop(spacing);
+            }
+
+            // Extra controls (shelf, satDriveSlider, qMode) below mute/bypass
+            if (extraControl)
+            {
+                if (extraLabel)
+                    extraLabel->setBounds(area.removeFromTop(labelHeight));
+                if (dynamic_cast<juce::Slider*>(extraControl))
+                    extraControl->setBounds(area.removeFromTop(sliderHeight).withSizeKeepingCentre(knobSize, sliderHeight));
+                else // For buttons (shelf, qMode)
+                    extraControl->setBounds(area.removeFromTop(labelHeight).reduced(area.getWidth() / 5, 0));
             }
         };
 
@@ -262,27 +260,25 @@ void Api550bAudioProcessorEditor::resized()
     {
         auto column = bounds.withX(bounds.getX() + i * (bandWidth + 10)).withWidth(bandWidth);
 
-        if (i == 0) // Low Band
+        if (i == 0) // Low Band: Mute, Bypass, Shelf
         {
-            layoutBand(column, lowBandLabel, lowFreqSlider, lowGainSlider, &lowShelfButton, nullptr, &lowMuteButton, &lowMuteLabel, &lowBypassButton, &lowBypassLabel);
+            layoutBand(column, lowBandLabel, lowFreqSlider, lowGainSlider, &lowShelfButton,
+                nullptr, &lowMuteButton, &lowMuteLabel, &lowBypassButton, &lowBypassLabel);
         }
-        else if (i == 1) // Low-Mid Band
+        else if (i == 1) // Low-Mid Band: Mute, Bypass, Sat Drive
         {
-            juce::Label satDriveLabel; // Temporary label for layout
-            satDriveLabel.setText("DRIVE", juce::dontSendNotification);
-            satDriveLabel.setJustificationType(juce::Justification::centred);
-            layoutBand(column, lowMidBandLabel, lowMidFreqSlider, lowMidGainSlider, &satDriveSlider, &satDriveLabel, &lmMuteButton, &lmMuteLabel, &lmBypassButton, &lmBypassLabel);
+            layoutBand(column, lowMidBandLabel, lowMidFreqSlider, lowMidGainSlider, &satDriveSlider,
+                &satDriveLabel, &lmMuteButton, &lmMuteLabel, &lmBypassButton, &lmBypassLabel);
         }
-        else if (i == 2) // High-Mid Band
+        else if (i == 2) // High-Mid Band: Mute, Bypass, Q Mode
         {
-            juce::Label qModeLabel;
-            qModeLabel.setText("PROPORTIONAL Q", juce::dontSendNotification);
-            qModeLabel.setJustificationType(juce::Justification::centred);
-            layoutBand(column, highMidBandLabel, highMidFreqSlider, highMidGainSlider, &qModeButton, &qModeLabel, &hmMuteButton, &hmMuteLabel, &hmBypassButton, &hmBypassLabel);
+            layoutBand(column, highMidBandLabel, highMidFreqSlider, highMidGainSlider, &qModeButton,
+                nullptr, &hmMuteButton, &hmMuteLabel, &hmBypassButton, &hmBypassLabel);
         }
-        else if (i == 3) // High Band
+        else if (i == 3) // High Band: Mute, Bypass, Shelf
         {
-            layoutBand(column, highBandLabel, highFreqSlider, highGainSlider, &highShelfButton, nullptr, &highMuteButton, &highMuteLabel, &highBypassButton, &highBypassLabel);
+            layoutBand(column, highBandLabel, highFreqSlider, highGainSlider, &highShelfButton,
+                nullptr, &highMuteButton, &highMuteLabel, &highBypassButton, &highBypassLabel);
         }
     }
 }

@@ -25,12 +25,11 @@ private:
     juce::TextButton hmMuteButton, hmBypassButton;
     juce::TextButton highMuteButton, highBypassButton;
     juce::Label lowBandLabel, lowMidBandLabel, highMidBandLabel, highBandLabel;
-
-    // New Labels for Mute/Bypass buttons
     juce::Label lowMuteLabel, lowBypassLabel;
     juce::Label lmMuteLabel, lmBypassLabel;
     juce::Label hmMuteLabel, hmBypassLabel;
     juce::Label highMuteLabel, highBypassLabel;
+    juce::Label satDriveLabel; // Kept for DRIVE label
 
     using SliderAttachment = juce::AudioProcessorValueTreeState::SliderAttachment;
     using ButtonAttachment = juce::AudioProcessorValueTreeState::ButtonAttachment;
